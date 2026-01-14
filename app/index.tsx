@@ -1,15 +1,30 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 import React from 'react'
-import "./global.css"
+import { CameraView, useCameraPermissions } from 'expo-camera'
 
-const index = () => {
+const Index = () => {
+  const [permission, requestPermission] = useCameraPermissions()
+
+  if (!permission?.granted) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <Text>Camera permission is required</Text>
+
+        <Text
+          className="mt-4 text-blue-600"
+          onPress={requestPermission}
+        >
+          Grant Permission
+        </Text>
+      </View>
+    )
+  }
+
   return (
-    <View>
-      <Text>index</Text>
+    <View className="flex-1 bg-red-50">
+      <CameraView style={{ flex: 1 }} facing="back" />
     </View>
   )
 }
 
-export default index
-
-const styles = StyleSheet.create({})
+export default Index
