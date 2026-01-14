@@ -341,3 +341,5 @@ I can add:
 
 Just tell me 🚀
 ```
+
+Pair Extraordinaire badge test
