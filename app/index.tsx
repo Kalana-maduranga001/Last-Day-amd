@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { View, Text, Pressable, Alert, Image } from 'react-native'
 import {
   CameraView,
@@ -11,11 +11,9 @@ import * as MediaLibrary from 'expo-media-library'
 export default function Index() {
   const cameraRef = useRef<CameraView | null>(null)
 
-  // Camera permission
+  // Permissions
   const [cameraPermission, requestCameraPermission] =
     useCameraPermissions()
-
-  // Media library permission
   const [mediaPermission, requestMediaPermission] =
     MediaLibrary.usePermissions()
 
@@ -23,34 +21,36 @@ export default function Index() {
   const [photo, setPhoto] = useState<string | null>(null)
   const [scanned, setScanned] = useState(false)
 
-  // Take photo
+  // Ask gallery permission once
+  useEffect(() => {
+    if (!mediaPermission?.granted) {
+      requestMediaPermission()
+    }
+  }, [])
+
+  // 📸 TAKE PHOTO + AUTO SAVE
   const takePhoto = async () => {
     if (!cameraRef.current) return
+
     const result = await cameraRef.current.takePictureAsync()
     setPhoto(result.uri)
+
+    // 💾 Auto save to gallery
+    try {
+      const asset = await MediaLibrary.createAssetAsync(result.uri)
+      const album = await MediaLibrary.getAlbumAsync('MyCameraApp')
+
+      if (!album) {
+        await MediaLibrary.createAlbumAsync('MyCameraApp', asset, false)
+      } else {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false)
+      }
+    } catch (error) {
+      console.log('Save error:', error)
+    }
   }
 
-  // Save photo to gallery
-  const savePhoto = async () => {
-    if (!photo) return
-
-    if (!mediaPermission?.granted) {
-      await requestMediaPermission()
-    }
-
-    const asset = await MediaLibrary.createAssetAsync(photo)
-    const album = await MediaLibrary.getAlbumAsync('MyCameraApp')
-
-    if (!album) {
-      await MediaLibrary.createAlbumAsync('MyCameraApp', asset, false)
-    } else {
-      await MediaLibrary.addAssetsToAlbumAsync([asset], album, false)
-    }
-
-    Alert.alert('Saved', 'Photo saved to gallery')
-  }
-
-  // QR code handler
+  // 🔍 QR Scanner
   const handleBarcodeScanned = (result: BarcodeScanningResult) => {
     if (scanned) return
     setScanned(true)
@@ -60,13 +60,7 @@ export default function Index() {
   // Permission UI
   if (!cameraPermission?.granted) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Camera permission is required</Text>
         <Text
           style={{ marginTop: 10, color: 'blue' }}
@@ -99,7 +93,7 @@ export default function Index() {
           gap: 12,
         }}
       >
-        {/* Capture */}
+        {/* Capture Button */}
         <Pressable
           onPress={takePhoto}
           style={{
@@ -112,26 +106,9 @@ export default function Index() {
           }}
         />
 
-        {/* Save */}
-        {photo && (
-          <Pressable
-            onPress={savePhoto}
-            style={{
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              backgroundColor: '#2563eb',
-              borderRadius: 6,
-            }}
-          >
-            <Text style={{ color: 'white' }}>Save to Gallery</Text>
-          </Pressable>
-        )}
-
-        {/* Flip */}
+        {/* Flip Camera */}
         <Pressable
-          onPress={() =>
-            setFacing(facing === 'back' ? 'front' : 'back')
-          }
+          onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
           style={{
             paddingHorizontal: 16,
             paddingVertical: 8,
@@ -158,7 +135,7 @@ export default function Index() {
         )}
       </View>
 
-      {/* Photo Preview */}
+      {/* Preview */}
       {photo && (
         <Image
           source={{ uri: photo }}
